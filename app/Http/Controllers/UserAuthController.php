@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use JWTAuth;
 use App\Models\UserAuthModel;
 use JWTAuthException;
+use Helpers;
 
 class UserAuthController extends Controller
 {
@@ -27,15 +28,48 @@ class UserAuthController extends Controller
 
     public function register(Request $request)
     {
-        $user = $this->model->create([
-            'username' => $request->get('username'),
-            'password' => bcrypt($request->get('password'))
-        ]);
+        $model = $this->model;
+
+        $data = $request->toArray();
+
+        array_walk($data, 'trim');
+
+        $user = $email = NULL;
+
+        try {
+
+            $username = $data['username'];
+            $email = Helpers::getDefault($data['email']);
+
+            if ($model->getValue($username, 'username')) {
+                return response()->json([
+                    'message' => 'username_exists'
+                ], 422);
+            } elseif ($email && $model->getValue($email, 'email')) {
+                return response()->json([
+                    'message' => 'email_exists',
+                ], 422);
+            } else {
+                $user = $this->model->create([
+                    'username' => $username,
+                    'password' => bcrypt($data['password']),
+                    'email' => $email,
+                    'first_name' => Helpers::getDefault($data['first_name'], NULL),
+                    'last_name' => Helpers::getDefault($data['last_name'], NULL),
+                ]);
+            }
+        } catch (JWTAuthException $exception) {
+            return response()->json([
+                'message' => 'invalid_login_or_password',
+            ], 422);
+        }
+
+        if ($email) {
+            $this->model->sendRegisterEmail($email);
+        }
 
         return response()->json([
-            'status' => true,
-            'message' => 'User account created successfully',
-            'data' => $user,
+            'message' => 'Password was updated successfully',
         ]);
     }
 
@@ -45,26 +79,111 @@ class UserAuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = [];
+        $model = $this->model;
         $id = $token = NULL;
 
-        parse_str($request->getContent(), $credentials);
+        $username = $request->username;
+        $password = $request->password;
+
+        $credentials = [
+            'username' => $username,
+            'password' => $request->password,
+        ];
 
         try {
+
+            $expire = $model->getValue($username, 'username', 'password_expire');
+
+            if ($expire && time() - $expire > 5 * 60) {
+                return response()->json([
+                    'message' => 'password_expired',
+                ], 403);
+            }
+
             if (! $token = JWTAuth::attempt($credentials)) {
-                return response()->json(['invalid_login_or_password'], 422);
+                return response()->json([
+                    'message' => 'invalid_login_or_password',
+                ], 403);
             }
 
             $login = $credentials['username'];
 
             $this->model->updateToken($login, $token);
-            $id = $this->model->getIDBylogin($login);
+            $id = $model->getValue($login, 'username', 'id');
 
         } catch (JWTAuthException $exception) {
-            return response()->json(['failed_to_create_token'], 500);
+            return response()->json([
+                'message' => 'failed_to_create_token',
+            ], 500);
         }
 
         return response()->json(compact('token', 'id'));
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function passwordReset(Request $request)
+    {
+        $model = $this->model;
+
+        $userID = $request->userID;
+        $oldPassword = $request->oldPassword;
+        $newPassword = $request->newPassword;
+
+        $token = JWTAuth::attempt([
+            'username' => $model->getValue($userID, 'id', 'username'),
+            'password' => $oldPassword,
+        ]);
+
+        if ($token) {
+            $model->where('id', $userID)
+                ->update([
+                    'password' => bcrypt($newPassword),
+                    'password_expire' => 0,
+                ]);
+        } else {
+            return response()->json([
+                'message' => 'invalid_old_password',
+            ], 403);
+        }
+
+        return response()->json([
+            'message' => 'User account created successfully',
+        ]);
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function passwordRecoveryByEmail(Request $request)
+    {
+        $model = $this->model;
+        $email = $request->email;
+
+        $info = $model->getValue($email, 'email');
+
+        if (! $info) {
+            return response()->json([
+                'message' => 'email_does_not_exist',
+            ], 422);
+        }
+
+        $password = uniqid();
+
+        $model->where('email', $email)
+            ->update([
+                'password' => bcrypt($password),
+                'password_expire' => time(),
+            ]);
+
+        $model->sendPasswordRecoveryEmail($info, $password);
+
+        return response()->json([
+            'message' => 'Password recovery completed',
+        ]);
     }
 
     /*
@@ -80,7 +199,9 @@ class UserAuthController extends Controller
         return md5($request->token) == $attributes['session_token'] ?
                 response()->json([
                     'data' => $data
-                ]) : response()->json(['invalid_token'], 400);
+                ]) : response()->json([
+                    'message' => 'invalid_token',
+                ], 403);
     }
 
     /*

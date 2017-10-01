@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use Mail;
 use Illuminate\Auth\Authenticatable;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\AbstractModel;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 
-class UserAuthModel extends Model implements AuthenticatableContract
+class UserAuthModel extends AbstractModel implements AuthenticatableContract
 {
     use Authenticatable;
 
-    public $timestamps = FALSE;
     protected $table = 'users';
+    protected $primeKey = 'id';
 
     /**
      * The attributes that are mass assignable.
@@ -20,7 +21,11 @@ class UserAuthModel extends Model implements AuthenticatableContract
      * @var array
      */
     protected $fillable = [
-        'username', 'password',
+        'username',
+        'password',
+        'email',
+        'first_name',
+        'last_name',
     ];
 
     /**
@@ -29,7 +34,8 @@ class UserAuthModel extends Model implements AuthenticatableContract
      * @var array
      */
     protected $hidden = [
-        'password', 'session_token',
+        'password',
+        'session_token',
     ];
 
     /*
@@ -50,13 +56,47 @@ class UserAuthModel extends Model implements AuthenticatableContract
     ****************************************************************************
     */
 
-    public function getIDBylogin($login)
+    public function sendRegisterEmail($email)
     {
-        $result = $this->select('id')
-            ->where('username', $login)
+        $result = $this->select(
+                'first_name',
+                'last_name'
+            )
+            ->where('email', $email)
             ->first();
 
-        return $result['id'];
+        $data = $result->toArray();
+
+        $user = trim($data['first_name'] . ' ' . $data['last_name']);
+
+        Mail::send('emails.register', ['user' => $user], function ($mail) use ($email, $user) {
+
+            $from = env('MAIL_USERNAME');
+
+            $mail->from($from, 'MVM Sing Up')
+                    ->to($email, $user)
+                    ->subject('Registering to MVM');
+        });
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function sendPasswordRecoveryEmail($info, $password)
+    {
+        $user = trim($info['first_name'] . ' ' . $info['last_name']);
+        $email = $info['email'];
+        $info['password'] = $password;
+
+        Mail::send('emails.passwordRecovery', ['info' => $info], function ($mail) use ($email, $user) {
+
+            $from = env('MAIL_USERNAME');
+
+            $mail->from($from, 'MVM Password Recovery')
+                    ->to($email, $user)
+                    ->subject('Password Recovert at MVM');
+        });
     }
 
     /*

@@ -181,6 +181,7 @@ return [
 
         Tymon\JWTAuth\Providers\JWTAuthServiceProvider::class,
 
+        App\Providers\HelperServiceProvider::class,
     ],
 
     /*
@@ -231,6 +232,8 @@ return [
         'View' => Illuminate\Support\Facades\View::class,
 
         'JWTAuth' => Tymon\JWTAuth\Facades\JWTAuth::class,
+
+        'Helpers' => App\Helpers\Helpers::class,
     ],
 
 ];

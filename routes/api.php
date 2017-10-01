@@ -15,6 +15,8 @@ use Illuminate\Http\Request;
 
 Route::post('auth/register', 'UserAuthController@register');
 Route::post('auth/login', 'UserAuthController@login');
+Route::post('auth/password-reset', 'UserAuthController@passwordReset');
+Route::post('auth/password-recovery-by-email', 'UserAuthController@passwordRecoveryByEmail');
 
 Route::group(['middleware' => 'jwt.auth'], function() {
     Route::get('user', 'UserAuthController@getAuthUser');

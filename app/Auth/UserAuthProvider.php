@@ -57,6 +57,7 @@ class UserAuthProvider implements UserProvider
 
     public function retrieveByCredentials(array $credentials)
     {
+file_put_contents('../../outputs/vadzim.txt', print_r($credentials, TRUE), FILE_APPEND);
         $query = UserAuthModel::where('username', '=', $credentials['username']);
 
         return $query->select(
