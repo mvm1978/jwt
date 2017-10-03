@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use JWTAuth;
 use App\Models\UserAuthModel;
+use App\Models\UserQuestionsAuthModel;
 use JWTAuthException;
 use Helpers;
 
 class UserAuthController extends Controller
 {
     private $model;
+    private $questionsModel;
+    private $userQuestionsModel;
 
     /*
     ****************************************************************************
@@ -20,6 +24,7 @@ class UserAuthController extends Controller
     public function __construct(UserAuthModel $model)
     {
         $this->model = $model;
+        $this->userQuestionsModel = new UserQuestionsAuthModel();
     }
 
     /*
@@ -47,15 +52,22 @@ class UserAuthController extends Controller
                 return response()->json([
                     'message' => 'email_exists',
                 ], 422);
-            } else {
-                $user = $this->model->create([
-                    'username' => $username,
-                    'password' => bcrypt($data['password']),
-                    'email' => $email,
-                    'first_name' => Helpers::getDefault($data['first_name'], NULL),
-                    'last_name' => Helpers::getDefault($data['last_name'], NULL),
-                ]);
             }
+
+            DB::beginTransaction();
+
+            $user = $model->create([
+                'username' => $username,
+                'password' => bcrypt($data['password']),
+                'email' => $email,
+                'first_name' => Helpers::getDefault($data['first_name'], NULL),
+                'last_name' => Helpers::getDefault($data['last_name'], NULL),
+            ]);
+
+            $this->userQuestionsModel->add($user->id, $data['questions']);
+
+            DB::commit();
+
         } catch (JWTAuthException $exception) {
             return response()->json([
                 'message' => 'invalid_login_or_password',
@@ -67,7 +79,7 @@ class UserAuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'Password was updated successfully',
+            'message' => 'User was created successfully',
         ]);
     }
 
@@ -85,7 +97,7 @@ class UserAuthController extends Controller
 
         $credentials = [
             'username' => $username,
-            'password' => $request->password,
+            'password' => $password,
         ];
 
         try {

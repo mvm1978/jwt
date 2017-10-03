@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\QuestionsAuthModel;
+use App\Models\UserQuestionsAuthModel;
 
-class QuestionsAuthController extends Controller
+class UserQuestionsAuthController extends Controller
 {
     private $model;
 
@@ -13,7 +13,7 @@ class QuestionsAuthController extends Controller
     ****************************************************************************
     */
 
-    public function __construct(QuestionsAuthModel $model)
+    public function __construct(UserQuestionsAuthModel $model)
     {
         $this->model = $model;
     }
@@ -22,13 +22,5 @@ class QuestionsAuthController extends Controller
     ****************************************************************************
     */
 
-    public function fetch($limit=0)
-    {
-        return $this->model->fetch($limit);
-    }
-
-    /*
-    ****************************************************************************
-    */
 
 }
