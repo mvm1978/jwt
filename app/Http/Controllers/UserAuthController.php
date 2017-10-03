@@ -32,8 +32,6 @@ class UserAuthController extends Controller
 
         $data = $request->toArray();
 
-        array_walk($data, 'trim');
-
         $user = $email = NULL;
 
         try {
