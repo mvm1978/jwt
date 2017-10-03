@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Facades\Hash;
+
 use App\Models\AbstractModel;
 
 class UserQuestionsAuthModel extends AbstractModel
@@ -33,6 +35,50 @@ class UserQuestionsAuthModel extends AbstractModel
                 'answer' => bcrypt($answer),
             ]);
         }
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function fetch($username)
+    {
+        $result = $this
+                ->select(
+                    'question_id',
+                    'question'
+                )
+                ->join('users', 'users.id', '=', 'user_questions.user_id')
+                ->join('questions', 'questions.id', '=', 'user_questions.question_id')
+                ->where('username', $username)
+                ->inRandomOrder()
+                ->first();
+
+        return $result ? $result->toArray() : [];
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function verify($data)
+    {
+        $result = $this
+                ->select('answer')
+                ->join('users', 'users.id', '=', 'user_questions.user_id')
+                ->join('questions', 'questions.id', '=', 'user_questions.question_id')
+                ->where('username', $data['username'])
+                ->where('question_id', $data['questionID'])
+                ->inRandomOrder()
+                ->first();
+
+        if (! $result) {
+            return FALSE;
+        }
+
+        $info = $result->toArray();
+
+        return Hash::check($data['answer'], $info['answer']);
     }
 
     /*

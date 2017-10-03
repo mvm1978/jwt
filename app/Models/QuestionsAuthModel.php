@@ -22,11 +22,9 @@ class QuestionsAuthModel extends AbstractModel
     ****************************************************************************
     */
 
-    public function fetch($limit=0)
+    public function fetch()
     {
-        $query = $limit ? $this->orderByRaw('RAND()')->limit($limit) : $this;
-
-        return $query->get()->toArray();
+        return $this->get()->toArray();
     }
 
     /*

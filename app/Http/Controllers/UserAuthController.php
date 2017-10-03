@@ -147,21 +147,29 @@ class UserAuthController extends Controller
             'password' => $oldPassword,
         ]);
 
-        if ($token) {
-            $model->where('id', $userID)
-                ->update([
-                    'password' => bcrypt($newPassword),
-                    'password_expire' => 0,
-                ]);
-        } else {
+        if (! $token) {
             return response()->json([
                 'message' => 'invalid_old_password',
             ], 403);
         }
 
-        return response()->json([
-            'message' => 'User account created successfully',
-        ]);
+        try {
+
+            $model->where('id', $userID)
+                ->update([
+                    'password' => bcrypt($newPassword),
+                    'password_expire' => 0,
+                ]);
+
+            return response()->json([
+                'message' => 'User account created successfully',
+            ]);
+
+        } catch (JWTAuthException $exception) {
+            return response()->json([
+                'message' => 'error_resetting_password',
+            ], 500);
+        }
     }
 
     /*
