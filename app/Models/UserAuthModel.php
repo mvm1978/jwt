@@ -83,11 +83,10 @@ class UserAuthModel extends AbstractModel implements AuthenticatableContract
     ****************************************************************************
     */
 
-    public function sendPasswordRecoveryEmail($info, $password)
+    public function sendPasswordRecoveryEmail($info)
     {
         $user = trim($info['first_name'] . ' ' . $info['last_name']);
         $email = $info['email'];
-        $info['password'] = $password;
 
         Mail::send('emails.passwordRecovery', ['info' => $info], function ($mail) use ($email, $user) {
 

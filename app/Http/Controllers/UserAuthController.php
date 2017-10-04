@@ -102,14 +102,6 @@ class UserAuthController extends Controller
 
         try {
 
-            $expire = $model->getValue($username, 'username', 'password_expire');
-
-            if ($expire && time() - $expire > 5 * 60) {
-                return response()->json([
-                    'message' => 'password_expired',
-                ], 403);
-            }
-
             if (! $token = JWTAuth::attempt($credentials)) {
                 return response()->json([
                     'message' => 'invalid_login_or_password',
@@ -138,19 +130,43 @@ class UserAuthController extends Controller
     {
         $model = $this->model;
 
-        $userID = $request->userID;
-        $oldPassword = $request->oldPassword;
-        $newPassword = $request->newPassword;
+        $data = $request->toArray();
 
-        $token = JWTAuth::attempt([
-            'username' => $model->getValue($userID, 'id', 'username'),
-            'password' => $oldPassword,
-        ]);
+        $userID = NULL;
 
-        if (! $token) {
-            return response()->json([
-                'message' => 'invalid_old_password',
-            ], 403);
+        $newPassword = $data['newPassword'];
+
+        if (isset($data['userID'])) {
+
+            $userID = $data['userID'];
+
+            $token = JWTAuth::attempt([
+                'username' => $model->getValue($userID, 'id', 'username'),
+                'password' => $data['oldPassword'],
+            ]);
+
+            if (! $token) {
+                return response()->json([
+                    'message' => 'invalid_old_password',
+                ], 422);
+            }
+        }
+
+        if (isset($data['recoveryToken'])) {
+
+            $results = $model->getValue($data['recoveryToken'], 'recovery_token');
+
+            if (! $results) {
+                return response()->json([
+                    'message' => 'missing_password_recovery_token',
+                ], 422);
+            } elseif (time() > $results['recovery_token_expire'] + 5 * 60) {
+                return response()->json([
+                    'message' => 'password_recovery_token_expired',
+                ], 422);
+            } else {
+                $userID = $results['id'];
+            }
         }
 
         try {
@@ -158,11 +174,12 @@ class UserAuthController extends Controller
             $model->where('id', $userID)
                 ->update([
                     'password' => bcrypt($newPassword),
-                    'password_expire' => 0,
+                    'recovery_token' => NULL,
+                    'recovery_token_expire' => 0,
                 ]);
 
             return response()->json([
-                'message' => 'User account created successfully',
+                'message' => 'Password was reset successfully',
             ]);
 
         } catch (JWTAuthException $exception) {
@@ -189,15 +206,16 @@ class UserAuthController extends Controller
             ], 422);
         }
 
-        $password = uniqid();
+        $info['token'] = uniqid();
+        $info['url'] = $request->url;
 
         $model->where('email', $email)
             ->update([
-                'password' => bcrypt($password),
-                'password_expire' => time(),
+                'recovery_token_expire' => time(),
+                'recovery_token' => $info['token'],
             ]);
 
-        $model->sendPasswordRecoveryEmail($info, $password);
+        $model->sendPasswordRecoveryEmail($info);
 
         return response()->json([
             'message' => 'Password recovery completed',

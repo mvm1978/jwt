@@ -56,7 +56,8 @@ class UserQuestionsAuthController extends Controller
             $this->userModel->where('username', $data['username'])
                     ->update([
                         'password' => bcrypt($data['password']),
-                        'password_expire' => 0,
+                        'recovery_token_expire' => 0,
+                        'recovery_token' => NULL,
                     ]);
 
             return response()->json([
