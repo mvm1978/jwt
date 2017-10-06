@@ -90,7 +90,7 @@ class UserAuthController extends Controller
     public function login(Request $request)
     {
         $model = $this->model;
-        $id = $token = NULL;
+        $id = $email = $firstName = $lastName = $fullName = $token = NULL;
 
         $username = $request->username;
         $password = $request->password;
@@ -111,7 +111,14 @@ class UserAuthController extends Controller
             $login = $credentials['username'];
 
             $this->model->updateToken($login, $token);
-            $id = $model->getValue($login, 'username', 'id');
+            $userInfo = $model->getValue($login, 'username');
+
+            $id = $userInfo['id'];
+            $email = $userInfo['email'];
+            $firstName = $userInfo['first_name'];
+            $lastName = $userInfo['last_name'];
+            $fullName = $firstName || $lastName ?
+                    trim($firstName . ' ' . $lastName) : $login;
 
         } catch (JWTAuthException $exception) {
             return response()->json([
@@ -119,7 +126,9 @@ class UserAuthController extends Controller
             ], 500);
         }
 
-        return response()->json(compact('token', 'id'));
+        $return = compact('token', 'id', 'email', 'firstName', 'lastName', 'fullName');
+
+        return response()->json($return);
     }
 
     /*
