@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+
+use App\Http\Controllers\Controller;
+
 use App\Models\UserQuestionsAuthModel;
 use App\Models\UserAuthModel;
+use App\Models\PasswordRecoveryAuthModel;
 
 class UserQuestionsAuthController extends Controller
 {
@@ -20,6 +24,7 @@ class UserQuestionsAuthController extends Controller
     {
         $this->model = $model;
         $this->userModel = new UserAuthModel();
+        $this->passwordRecoveryModel = new PasswordRecoveryAuthModel();
     }
 
     /*
@@ -53,12 +58,19 @@ class UserQuestionsAuthController extends Controller
 
         try {
 
+            $userID = $this->userModel->getValue($data['username'], 'username', 'id');
+
+            DB::beginTransaction();
+
             $this->userModel->where('username', $data['username'])
-                    ->update([
-                        'password' => bcrypt($data['password']),
-                        'recovery_token_expire' => 0,
-                        'recovery_token' => NULL,
-                    ]);
+                ->update([
+                    'password' => bcrypt($data['password']),
+                ]);
+
+            $this->passwordRecoveryModel->where('id', $userID)
+                    ->delete();
+
+            DB::commit();
 
             return response()->json([
                 'message' => 'Password recovery completed',

@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Mail;
 use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 
 use App\Models\AbstractModel;
-use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 
 class UserAuthModel extends AbstractModel implements AuthenticatableContract
 {

@@ -4,18 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use JWTAuth;
-use App\Models\UserAuthModel;
-use App\Models\UserQuestionsAuthModel;
 use JWTAuthException;
 use Helpers;
+
+use App\Http\Controllers\Controller;
+
+use App\Models\UserAuthModel;
+use App\Models\UserQuestionsAuthModel;
+use App\Models\PasswordRecoveryAuthModel;
 
 class UserAuthController extends Controller
 {
     private $model;
-    private $questionsModel;
     private $userQuestionsModel;
+    private $passwordRecoveryModel;
 
     /*
     ****************************************************************************
@@ -25,6 +28,7 @@ class UserAuthController extends Controller
     {
         $this->model = $model;
         $this->userQuestionsModel = new UserQuestionsAuthModel();
+        $this->passwordRecoveryModel = new PasswordRecoveryAuthModel();
     }
 
     /*
@@ -42,7 +46,7 @@ class UserAuthController extends Controller
         try {
 
             $username = $data['username'];
-            $email = Helpers::getDefault($data['email']);
+            $email = Helpers::getDefault($data['email'], NULL);
 
             if ($model->getValue($username, 'username')) {
                 return response()->json([
@@ -163,13 +167,13 @@ class UserAuthController extends Controller
 
         if (isset($data['recoveryToken'])) {
 
-            $results = $model->getValue($data['recoveryToken'], 'recovery_token');
+            $results = $this->passwordRecoveryModel->getValue($data['recoveryToken'], 'token');
 
             if (! $results) {
                 return response()->json([
                     'message' => 'missing_password_recovery_token',
                 ], 422);
-            } elseif (time() > $results['recovery_token_expire'] + 5 * 60) {
+            } elseif (time() > $results['expire'] + 5 * 60) {
                 return response()->json([
                     'message' => 'password_recovery_token_expired',
                 ], 422);
@@ -180,12 +184,17 @@ class UserAuthController extends Controller
 
         try {
 
+            DB::beginTransaction();
+
             $model->where('id', $userID)
-                ->update([
-                    'password' => bcrypt($newPassword),
-                    'recovery_token' => NULL,
-                    'recovery_token_expire' => 0,
-                ]);
+                    ->update([
+                        'password' => bcrypt($newPassword),
+                    ]);
+
+            $this->passwordRecoveryModel->where('id', $userID)
+                    ->delete();
+
+            DB::commit();
 
             return response()->json([
                 'message' => 'Password was reset successfully',
@@ -218,11 +227,10 @@ class UserAuthController extends Controller
         $info['token'] = uniqid();
         $info['url'] = $request->url;
 
-        $model->where('email', $email)
-            ->update([
-                'recovery_token_expire' => time(),
-                'recovery_token' => $info['token'],
-            ]);
+        $this->passwordRecoveryModel->create([
+            'token' => $info['token'],
+            'expire' => time(),
+        ]);
 
         $model->sendPasswordRecoveryEmail($info);
 
