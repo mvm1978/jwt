@@ -6,6 +6,9 @@ use GuzzleHttp\Client;
 
 use Illuminate\Database\Eloquent\Model;
 
+use JWTAuth;
+use Exception;
+
 class AuthenticationModel extends Model
 {
     private $client;
@@ -38,7 +41,7 @@ class AuthenticationModel extends Model
 
             return empty($result['data']['id']) ? FALSE :
                     $result['data']['id'] == $id;
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return FALSE;
         }
     }
@@ -63,9 +66,33 @@ class AuthenticationModel extends Model
             $result = json_decode($response->getBody(), TRUE);
 
             return $result;
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return FALSE;
         }
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function getAuthUser($token)
+    {
+        try {
+            $data = JWTAuth::toUser($token);
+        } catch (Exception $exception) {
+            return response()->json([
+                'error' => 'invalid_token',
+            ], 403);
+        }
+
+        $attributes = $data->getAttributes();
+
+        return md5($token) == $attributes['session_token'] ?
+                response()->json([
+                    'data' => $data
+                ]) : response()->json([
+                    'error' => 'invalid_token',
+                ], 403);
     }
 
     /*

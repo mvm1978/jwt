@@ -5,18 +5,19 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use JWTAuth;
-use JWTAuthException;
+use Exception;
+
 use Helpers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AbstractController;
 
+use App\Models\AuthenticationModel;
 use App\Models\UserAuthModel;
 use App\Models\UserQuestionsAuthModel;
 use App\Models\PasswordRecoveryAuthModel;
 
-class UserAuthController extends Controller
+class UserAuthController extends AbstractController
 {
-    private $model;
     private $userQuestionsModel;
     private $passwordRecoveryModel;
 
@@ -24,9 +25,11 @@ class UserAuthController extends Controller
     ****************************************************************************
     */
 
-    public function __construct(UserAuthModel $model)
+    public function __construct(Request $request)
     {
-        $this->model = $model;
+        $this->construct = parent::__construct($request);
+
+        $this->model = new UserAuthModel();
         $this->userQuestionsModel = new UserQuestionsAuthModel();
         $this->passwordRecoveryModel = new PasswordRecoveryAuthModel();
     }
@@ -37,6 +40,10 @@ class UserAuthController extends Controller
 
     public function register(Request $request)
     {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
         $model = $this->model;
 
         $data = $request->toArray();
@@ -50,11 +57,11 @@ class UserAuthController extends Controller
 
             if ($model->getValue($username, 'username')) {
                 return response()->json([
-                    'message' => 'username_exists'
+                    'error' => 'username_exists'
                 ], 422);
             } elseif ($email && $model->getValue($email, 'email')) {
                 return response()->json([
-                    'message' => 'email_exists',
+                    'error' => 'email_exists',
                 ], 422);
             }
 
@@ -72,9 +79,9 @@ class UserAuthController extends Controller
 
             DB::commit();
 
-        } catch (JWTAuthException $exception) {
+        } catch (Exception $exception) {
             return response()->json([
-                'message' => 'invalid_login_or_password',
+                'error' => 'invalid_login_or_password',
             ], 422);
         }
 
@@ -83,7 +90,7 @@ class UserAuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'User was created successfully',
+            'error' => 'User was created successfully',
         ]);
     }
 
@@ -93,6 +100,10 @@ class UserAuthController extends Controller
 
     public function login(Request $request)
     {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
         $model = $this->model;
         $id = $email = $firstName = $lastName = $fullName = $token = NULL;
 
@@ -108,7 +119,7 @@ class UserAuthController extends Controller
 
             if (! $token = JWTAuth::attempt($credentials)) {
                 return response()->json([
-                    'message' => 'invalid_login_or_password',
+                    'error' => 'invalid_login_or_password',
                 ], 403);
             }
 
@@ -124,9 +135,9 @@ class UserAuthController extends Controller
             $fullName = $firstName || $lastName ?
                     trim($firstName . ' ' . $lastName) : $login;
 
-        } catch (JWTAuthException $exception) {
+        } catch (Exception $exception) {
             return response()->json([
-                'message' => 'failed_to_create_token',
+                'error' => 'failed_to_create_token',
             ], 500);
         }
 
@@ -141,6 +152,10 @@ class UserAuthController extends Controller
 
     public function passwordReset(Request $request)
     {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
         $model = $this->model;
 
         $data = $request->toArray();
@@ -160,7 +175,7 @@ class UserAuthController extends Controller
 
             if (! $token) {
                 return response()->json([
-                    'message' => 'invalid_old_password',
+                    'error' => 'invalid_old_password',
                 ], 422);
             }
         }
@@ -171,11 +186,11 @@ class UserAuthController extends Controller
 
             if (! $results) {
                 return response()->json([
-                    'message' => 'missing_password_recovery_token',
+                    'error' => 'missing_password_recovery_token',
                 ], 422);
             } elseif (time() > $results['expire'] + 5 * 60) {
                 return response()->json([
-                    'message' => 'password_recovery_token_expired',
+                    'error' => 'password_recovery_token_expired',
                 ], 422);
             } else {
                 $userID = $results['id'];
@@ -197,12 +212,12 @@ class UserAuthController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Password was reset successfully',
+                'error' => 'Password was reset successfully',
             ]);
 
-        } catch (JWTAuthException $exception) {
+        } catch (Exception $exception) {
             return response()->json([
-                'message' => 'error_resetting_password',
+                'error' => 'error_resetting_password',
             ], 500);
         }
     }
@@ -213,6 +228,10 @@ class UserAuthController extends Controller
 
     public function passwordRecoveryByEmail(Request $request)
     {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
         $model = $this->model;
         $email = $request->email;
 
@@ -220,7 +239,7 @@ class UserAuthController extends Controller
 
         if (! $info) {
             return response()->json([
-                'message' => 'email_does_not_exist',
+                'error' => 'email_does_not_exist',
             ], 422);
         }
 
@@ -235,7 +254,37 @@ class UserAuthController extends Controller
         $model->sendPasswordRecoveryEmail($info);
 
         return response()->json([
-            'message' => 'Password recovery completed',
+            'error' => 'Password recovery completed',
+        ]);
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function update(Request $request)
+    {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
+        $body = $request->toArray();
+
+        try {
+            $this->model->where('id', $this->userID)
+                    ->update([
+                        'email' => $body['email'],
+                        'first_name' => $body['firstName'],
+                        'last_name' => $body['lastName'],
+                    ]);
+        } catch (Exception $exception) {
+            return response()->json([
+                'error' => 'error_updating_user_info',
+            ], 500);
+        }
+
+        return response()->json([
+            'error' => 'User Info updated seccessfully',
         ]);
     }
 
@@ -245,16 +294,9 @@ class UserAuthController extends Controller
 
     public function getAuthUser(Request $request)
     {
-        $data = JWTAuth::toUser($request->token);
+        $authenticationModel = new AuthenticationModel();
 
-        $attributes = $data->getAttributes();
-
-        return md5($request->token) == $attributes['session_token'] ?
-                response()->json([
-                    'data' => $data
-                ]) : response()->json([
-                    'message' => 'invalid_token',
-                ], 403);
+        return $authenticationModel->getAuthUser($request->token);
     }
 
     /*
