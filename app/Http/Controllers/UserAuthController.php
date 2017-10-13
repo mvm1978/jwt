@@ -68,8 +68,7 @@ class UserAuthController extends AbstractController
                     trim($firstName . ' ' . $lastName) : $login;
 
         } catch (Exception $exception) {
-            return $this->makeResponse(500, 'failed_to_create_token',
-                    $exception);
+            return $this->makeResponse(500, 'failed_to_create_token');
         }
 
         $return = compact('token', 'id', 'email', 'firstName', 'lastName', 'fullName');
@@ -100,8 +99,7 @@ class UserAuthController extends AbstractController
         try {
             $this->model->register($email, $data);
         } catch (Exception $exception) {
-            return $this->makeResponse(403, 'invalid_login_or_password',
-                    $exception);
+            return $this->makeResponse(403, 'invalid_login_or_password');
         }
 
         return $this->makeResponse(200, 'User was created successfully');
@@ -157,8 +155,7 @@ class UserAuthController extends AbstractController
         try {
             $model->passwordReset($userID, $data['newPassword']);
         } catch (Exception $exception) {
-            return $this->makeResponse(500, 'error_resetting_password',
-                    $exception);
+            return $this->makeResponse(500, 'error_resetting_password');
         }
 
         return $this->makeResponse(200, 'Password was reset successfully');
@@ -188,8 +185,7 @@ class UserAuthController extends AbstractController
         try {
             $model->passwordRecoveryByEmail($info);
         } catch (Exception $exception) {
-            return $this->makeResponse(500, 'error_recovering_password',
-                    $exception);
+            return $this->makeResponse(500, 'error_recovering_password');
         }
 
         return $this->makeResponse(200, 'Password recovery completed');

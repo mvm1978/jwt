@@ -67,8 +67,7 @@ class UserQuestionsAuthController extends AbstractController
             $usersModel->passwordReset($userID, $data['password']);
 
         } catch (Exception $exception) {
-            return $this->makeResponse(500, 'error_resetting_password',
-                    $exception);
+            return $this->makeResponse(500, 'error_resetting_password');
         }
 
         return $this->makeResponse(200, 'Password recovery completed');
@@ -90,8 +89,7 @@ class UserQuestionsAuthController extends AbstractController
 
             $this->model->updateUserQuestions($this->userID, $body['questions']);
         } catch (Exception $exception) {
-            return $this->makeResponse(500, 'error_updating_recovery_questions',
-                    $exception);
+            return $this->makeResponse(500, 'error_updating_recovery_questions');
         }
 
         return $this->makeResponse(200, 'Recovery Questions updated seccessfully');

@@ -84,33 +84,11 @@ class Controller extends BaseController
     ****************************************************************************
     */
 
-    protected function makeResponse($code, $message, $exception=NULL)
+    protected function makeResponse($code, $message)
     {
-        if ($code >= 300) {
-            $this->logError($message, $exception);
-        }
-
         return response()->json([
             'message' => $message,
         ], $code);
-    }
-
-    /*
-    ****************************************************************************
-    */
-
-    protected function logError($message, $exception=NULL)
-    {
-        $now = new \DateTime();
-
-        $errLog = '../../logs/error.log';
-        $backTrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $logMsg = $exception ? $exception->getMessage() : $message;
-
-        file_put_contents($errLog, $now->format('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
-        file_put_contents($errLog, print_r($backTrace, TRUE), FILE_APPEND);
-        file_put_contents($errLog, 'Error Message: ' . print_r($logMsg, TRUE), FILE_APPEND);
-        file_put_contents($errLog, str_repeat(PHP_EOL, 3), FILE_APPEND);
     }
 
     /*
