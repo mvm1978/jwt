@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Exception;
 
@@ -10,7 +9,6 @@ use App\Http\Controllers\AbstractController;
 
 use App\Models\UserQuestionsAuthModel;
 use App\Models\UserAuthModel;
-use App\Models\PasswordRecoveryAuthModel;
 
 class UserQuestionsAuthController extends AbstractController
 {
@@ -30,17 +28,16 @@ class UserQuestionsAuthController extends AbstractController
     ****************************************************************************
     */
 
-    public function fetch($userID)
+    public function fetch($username)
     {
         if (! empty($this->construct['error'])) {
             return $this->constructErrorResponse();
         }
 
-        $result = $this->model->fetch($userID);
+        $result = $this->model->fetch($username);
 
-        return $result ? $result : response()->json([
-            'error' => 'no_recovery_questions_found',
-        ], 422);
+        return $result ? $result :
+                $this->makeResponse(422, 'no_recovery_questions_found');
     }
 
     /*
@@ -58,39 +55,23 @@ class UserQuestionsAuthController extends AbstractController
         $result = $this->model->verify($data);
 
         if (! $result) {
-            return response()->json([
-                'error' => 'invalid_password_recovery_answer',
-            ], 422);
+            return $this->makeResponse(422, 'invalid_password_recovery_answer');
         }
 
         $usersModel = new UserAuthModel();
-        $passwordRecoveryModel = new PasswordRecoveryAuthModel();
 
         try {
 
             $userID = $usersModel->getValue($data['username'], 'username', 'id');
 
-            DB::beginTransaction();
-
-            $usersModel->where('username', $data['username'])
-                ->update([
-                    'password' => bcrypt($data['password']),
-                ]);
-
-            $passwordRecoveryModel->where('id', $userID)
-                    ->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'error' => 'Password recovery completed',
-            ]);
+            $usersModel->passwordReset($userID, $data['password']);
 
         } catch (Exception $exception) {
-            return response()->json([
-                'error' => 'error_resetting_password',
-            ], 500);
+            return $this->makeResponse(500, 'error_resetting_password',
+                    $exception);
         }
+
+        return $this->makeResponse(200, 'Password recovery completed');
     }
 
     /*
@@ -106,24 +87,14 @@ class UserQuestionsAuthController extends AbstractController
         $body = $request->toArray();
 
         try {
-            DB::beginTransaction();
 
-            $this->model->where('user_id', $this->userID)
-                    ->delete();
-
-            $this->model->add($this->userID, $body['questions']);
-
-            DB::commit();
+            $this->model->updateUserQuestions($this->userID, $body['questions']);
         } catch (Exception $exception) {
-
-            return response()->json([
-                'error' => 'error_updating_recovery_questions',
-            ], 500);
+            return $this->makeResponse(500, 'error_updating_recovery_questions',
+                    $exception);
         }
 
-        return response()->json([
-            'error' => 'Recovery Questions updated seccessfully',
-        ]);
+        return $this->makeResponse(200, 'Recovery Questions updated seccessfully');
     }
 
     /*

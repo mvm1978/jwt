@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use JWTAuth;
 use Exception;
@@ -13,13 +12,10 @@ use App\Http\Controllers\AbstractController;
 
 use App\Models\AuthenticationModel;
 use App\Models\UserAuthModel;
-use App\Models\UserQuestionsAuthModel;
 use App\Models\PasswordRecoveryAuthModel;
 
 class UserAuthController extends AbstractController
 {
-    private $userQuestionsModel;
-    private $passwordRecoveryModel;
 
     /*
     ****************************************************************************
@@ -27,71 +23,9 @@ class UserAuthController extends AbstractController
 
     public function __construct(Request $request)
     {
-        $this->construct = parent::__construct($request);
+        parent::__construct($request);
 
         $this->model = new UserAuthModel();
-        $this->userQuestionsModel = new UserQuestionsAuthModel();
-        $this->passwordRecoveryModel = new PasswordRecoveryAuthModel();
-    }
-
-    /*
-    ****************************************************************************
-    */
-
-    public function register(Request $request)
-    {
-        if (! empty($this->construct['error'])) {
-            return $this->constructErrorResponse();
-        }
-
-        $model = $this->model;
-
-        $data = $request->toArray();
-
-        $user = $email = NULL;
-
-        try {
-
-            $username = $data['username'];
-            $email = Helpers::getDefault($data['email'], NULL);
-
-            if ($model->getValue($username, 'username')) {
-                return response()->json([
-                    'error' => 'username_exists'
-                ], 422);
-            } elseif ($email && $model->getValue($email, 'email')) {
-                return response()->json([
-                    'error' => 'email_exists',
-                ], 422);
-            }
-
-            DB::beginTransaction();
-
-            $user = $model->create([
-                'username' => $username,
-                'password' => bcrypt($data['password']),
-                'email' => $email,
-                'first_name' => Helpers::getDefault($data['first_name'], NULL),
-                'last_name' => Helpers::getDefault($data['last_name'], NULL),
-            ]);
-
-            $this->userQuestionsModel->add($user->id, $data['questions']);
-
-            DB::commit();
-
-        } catch (Exception $exception) {
-            return response()->json([
-                'error' => 'invalid_login_or_password',
-            ], 422);
-        }
-
-        if ($email) {
-            $this->model->sendRegisterEmail($email);
-        }
-
-        return response()->json([
-            'error' => 'User was created successfully',
-        ]);
     }
 
     /*
@@ -118,9 +52,7 @@ class UserAuthController extends AbstractController
         try {
 
             if (! $token = JWTAuth::attempt($credentials)) {
-                return response()->json([
-                    'error' => 'invalid_login_or_password',
-                ], 403);
+                return $this->makeResponse(403, 'invalid_login_or_password');
             }
 
             $login = $credentials['username'];
@@ -136,14 +68,43 @@ class UserAuthController extends AbstractController
                     trim($firstName . ' ' . $lastName) : $login;
 
         } catch (Exception $exception) {
-            return response()->json([
-                'error' => 'failed_to_create_token',
-            ], 500);
+            return $this->makeResponse(500, 'failed_to_create_token',
+                    $exception);
         }
 
         $return = compact('token', 'id', 'email', 'firstName', 'lastName', 'fullName');
 
         return response()->json($return);
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function register(Request $request)
+    {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
+        $data = $request->toArray();
+
+        $email = Helpers::getDefault($data['email'], NULL);
+
+        if ($this->model->getValue($data['username'], 'username')) {
+            return $this->makeResponse(422, 'username_exists');
+        } elseif ($email && $this->model->getValue($email, 'email')) {
+            return $this->makeResponse(422, 'email_exists');
+        }
+
+        try {
+            $this->model->register($email, $data);
+        } catch (Exception $exception) {
+            return $this->makeResponse(403, 'invalid_login_or_password',
+                    $exception);
+        }
+
+        return $this->makeResponse(200, 'User was created successfully');
     }
 
     /*
@@ -157,12 +118,8 @@ class UserAuthController extends AbstractController
         }
 
         $model = $this->model;
-
         $data = $request->toArray();
-
         $userID = NULL;
-
-        $newPassword = $data['newPassword'];
 
         if (isset($data['userID'])) {
 
@@ -174,52 +131,37 @@ class UserAuthController extends AbstractController
             ]);
 
             if (! $token) {
-                return response()->json([
-                    'error' => 'invalid_old_password',
-                ], 422);
+                return $this->makeResponse(403, 'invalid_old_password');
             }
         }
 
+        $passwordRecoveryModel = new PasswordRecoveryAuthModel();
+
         if (isset($data['recoveryToken'])) {
 
-            $results = $this->passwordRecoveryModel->getValue($data['recoveryToken'], 'token');
+            $results = $passwordRecoveryModel->getValue($data['recoveryToken'], 'token');
 
             if (! $results) {
-                return response()->json([
-                    'error' => 'missing_password_recovery_token',
-                ], 422);
-            } elseif (time() > $results['expire'] + 5 * 60) {
-                return response()->json([
-                    'error' => 'password_recovery_token_expired',
-                ], 422);
+                return $this->makeResponse(422, 'missing_password_recovery_token');
+            } elseif (time() > $results['expire'] + env('PASSWORD_RECOVERY_LINK_EXPIRE')) {
+                return $this->makeResponse(403, 'password_recovery_token_expired');
             } else {
                 $userID = $results['id'];
             }
         }
 
-        try {
-
-            DB::beginTransaction();
-
-            $model->where('id', $userID)
-                    ->update([
-                        'password' => bcrypt($newPassword),
-                    ]);
-
-            $this->passwordRecoveryModel->where('id', $userID)
-                    ->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'error' => 'Password was reset successfully',
-            ]);
-
-        } catch (Exception $exception) {
-            return response()->json([
-                'error' => 'error_resetting_password',
-            ], 500);
+        if (! $userID) {
+            return $this->makeResponse(422, 'failed_to_get_user');
         }
+
+        try {
+            $model->passwordReset($userID, $data['newPassword']);
+        } catch (Exception $exception) {
+            return $this->makeResponse(500, 'error_resetting_password',
+                    $exception);
+        }
+
+        return $this->makeResponse(200, 'Password was reset successfully');
     }
 
     /*
@@ -233,29 +175,24 @@ class UserAuthController extends AbstractController
         }
 
         $model = $this->model;
-        $email = $request->email;
 
-        $info = $model->getValue($email, 'email');
+        $info = $model->getValue($request->email, 'email');
 
         if (! $info) {
-            return response()->json([
-                'error' => 'email_does_not_exist',
-            ], 422);
+            return $this->makeResponse(403, 'email_does_not_exist');
         }
 
         $info['token'] = uniqid();
         $info['url'] = $request->url;
 
-        $this->passwordRecoveryModel->create([
-            'token' => $info['token'],
-            'expire' => time(),
-        ]);
+        try {
+            $model->passwordRecoveryByEmail($info);
+        } catch (Exception $exception) {
+            return $this->makeResponse(500, 'error_recovering_password',
+                    $exception);
+        }
 
-        $model->sendPasswordRecoveryEmail($info);
-
-        return response()->json([
-            'error' => 'Password recovery completed',
-        ]);
+        return $this->makeResponse(200, 'Password recovery completed');
     }
 
     /*
@@ -271,21 +208,12 @@ class UserAuthController extends AbstractController
         $body = $request->toArray();
 
         try {
-            $this->model->where('id', $this->userID)
-                    ->update([
-                        'email' => $body['email'],
-                        'first_name' => $body['firstName'],
-                        'last_name' => $body['lastName'],
-                    ]);
+            $this->model->updateUserInfo($body, $this->userID);
         } catch (Exception $exception) {
-            return response()->json([
-                'error' => 'error_updating_user_info',
-            ], 500);
+            return $this->makeResponse(500, 'error_updating_user_info');
         }
 
-        return response()->json([
-            'error' => 'User Info updated seccessfully',
-        ]);
+        return $this->makeResponse(200, 'User Info updated seccessfully');
     }
 
     /*

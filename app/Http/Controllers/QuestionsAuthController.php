@@ -34,9 +34,8 @@ class QuestionsAuthController extends AbstractController
 
         $result = $this->model->fetch($limit);
 
-        return $result ? $result : response()->json([
-            'error' => 'no_recovery_questions_found',
-        ], 422);
+        return $result ? $result :
+                $this->makeResponse(422, 'no_recovery_questions_found');
     }
 
     /*

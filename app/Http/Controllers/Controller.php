@@ -7,6 +7,8 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+use Helpers;
+
 use App\Models\AuthenticationModel;
 
 class Controller extends BaseController
@@ -19,11 +21,11 @@ class Controller extends BaseController
         'users/password-reset' => TRUE,
         'users/password-recovery-by-email' => TRUE,
         'questions/get' => TRUE,
-        'user-questions/get/{username}' => TRUE,
+        'user-questions/get' => TRUE,
         'user-questions/verify' => TRUE,
     ];
 
-    protected $userID = NULL;
+    protected $userID;
     protected $construct;
 
     /*
@@ -32,7 +34,7 @@ class Controller extends BaseController
 
     public function __construct($request)
     {
-        $this->userID = NULL;
+        $this->userID = $this->construct = NULL;
 
         $parsed = explode('/', $request->getPathInfo());
 
@@ -41,7 +43,7 @@ class Controller extends BaseController
         }
 
         if (empty($parsed[3]) || empty($parsed[4])) {
-            return [
+            return $this->construct = [
                 'error' => [400 => 'bad_request'],
             ];
         }
@@ -54,7 +56,7 @@ class Controller extends BaseController
             $header = $request->header();
 
             if (empty($header['token']) || empty($header['id'])) {
-                return [
+                return $this->construct = [
                     'error' => [400 => 'bad_request'],
                 ];
             }
@@ -68,8 +70,8 @@ class Controller extends BaseController
 
             $body = json_decode($response->getContent(), TRUE);
 
-            if (empty($body['data']['id']) || $id != $body['data']['id']) {
-                return [
+            if (Helpers::getDefault($body['data']['id']) != $body['data']['id']) {
+                return $this->construct = [
                     'error' => [403 => 'invalid_token'],
                 ];
             }
@@ -82,15 +84,46 @@ class Controller extends BaseController
     ****************************************************************************
     */
 
+    protected function makeResponse($code, $message, $exception=NULL)
+    {
+        if ($code >= 300) {
+            $this->logError($message, $exception);
+        }
+
+        return response()->json([
+            'message' => $message,
+        ], $code);
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    protected function logError($message, $exception=NULL)
+    {
+        $now = new \DateTime();
+
+        $errLog = '../../logs/error.log';
+        $backTrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $logMsg = $exception ? $exception->getMessage() : $message;
+
+        file_put_contents($errLog, $now->format('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
+        file_put_contents($errLog, print_r($backTrace, TRUE), FILE_APPEND);
+        file_put_contents($errLog, 'Error Message: ' . print_r($logMsg, TRUE), FILE_APPEND);
+        file_put_contents($errLog, str_repeat(PHP_EOL, 3), FILE_APPEND);
+    }
+
+    /*
+    ****************************************************************************
+    */
+
     protected function constructErrorResponse()
     {
         $error = $this->construct['error'];
 
         $code = key($error);
 
-        return response()->json([
-            'error' => $error[$code],
-        ], $code);
+        $this->makeResponse($code, $error[$code]);
     }
 
     /*

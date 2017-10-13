@@ -12,7 +12,7 @@ class AbstractController extends Controller
 
     public function __construct($request)
     {
-        return parent::__construct($request);
+        parent::__construct($request);
     }
 
     /*

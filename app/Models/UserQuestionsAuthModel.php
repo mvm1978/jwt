@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 use App\Models\AbstractModel;
@@ -79,6 +80,22 @@ class UserQuestionsAuthModel extends AbstractModel
         $info = $result->toArray();
 
         return Hash::check($data['answer'], $info['answer']);
+    }
+
+    /*
+    ****************************************************************************
+    */
+
+    public function updateUserQuestions($userID, $questions)
+    {
+        DB::beginTransaction();
+
+        $this->where('user_id', $userID)
+                ->delete();
+
+        $this->add($userID, $questions);
+
+        DB::commit();
     }
 
     /*

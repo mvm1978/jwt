@@ -39,8 +39,7 @@ class AuthenticationModel extends Model
 
             $result = json_decode($response->getBody(), TRUE);
 
-            return empty($result['data']['id']) ? FALSE :
-                    $result['data']['id'] == $id;
+            return Helpers::getDefailt($result['data']['id']) == $id;
         } catch (Exception $exception) {
             return FALSE;
         }
@@ -81,7 +80,7 @@ class AuthenticationModel extends Model
             $data = JWTAuth::toUser($token);
         } catch (Exception $exception) {
             return response()->json([
-                'error' => 'invalid_token',
+                'message' => 'invalid_token',
             ], 403);
         }
 
@@ -91,7 +90,7 @@ class AuthenticationModel extends Model
                 response()->json([
                     'data' => $data
                 ]) : response()->json([
-                    'error' => 'invalid_token',
+                    'message' => 'invalid_token',
                 ], 403);
     }
 
