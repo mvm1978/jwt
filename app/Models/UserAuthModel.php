@@ -176,4 +176,27 @@ class UserAuthModel extends AbstractModel implements AuthenticatableContract
     ****************************************************************************
     */
 
+    public function getUserInfo($token, $data)
+    {
+        $field = key($data);
+        $value = $data[$field];
+
+        $userInfo = $this->getValue($value, $field);
+
+        $id = $userInfo['id'];
+        $userneme = $userInfo['username'];
+        $email = $userInfo['email'];
+        $firstName = $userInfo['first_name'];
+        $lastName = $userInfo['last_name'];
+        $fullName = $firstName || $lastName ? trim($firstName . ' ' . $lastName) :
+            $userneme;
+
+        return compact('token', 'id', 'uername', 'email', 'firstName', 'lastName',
+                'fullName');
+    }
+
+    /*
+    ****************************************************************************
+    */
+
 }

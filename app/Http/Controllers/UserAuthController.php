@@ -38,8 +38,7 @@ class UserAuthController extends AbstractController
             return $this->constructErrorResponse();
         }
 
-        $model = $this->model;
-        $id = $email = $firstName = $lastName = $fullName = $token = NULL;
+        $passwordRecoveryModel = new PasswordRecoveryAuthModel();
 
         $username = $request->username;
         $password = $request->password;
@@ -58,20 +57,17 @@ class UserAuthController extends AbstractController
             $login = $credentials['username'];
 
             $this->model->updateToken($login, $token);
-            $userInfo = $model->getValue($login, 'username');
 
-            $id = $userInfo['id'];
-            $email = $userInfo['email'];
-            $firstName = $userInfo['first_name'];
-            $lastName = $userInfo['last_name'];
-            $fullName = $firstName || $lastName ?
-                    trim($firstName . ' ' . $lastName) : $login;
+            $return = $this->model->getUserInfo($token, [
+                'username' => $login
+            ]);
+
+            $passwordRecoveryModel->where('id', $return['id'])
+                    ->delete();
 
         } catch (Exception $exception) {
             return $this->makeResponse(500, 'failed_to_create_token');
         }
-
-        $return = compact('token', 'id', 'email', 'firstName', 'lastName', 'fullName');
 
         return response()->json($return);
     }
@@ -141,7 +137,7 @@ class UserAuthController extends AbstractController
 
             if (! $results) {
                 return $this->makeResponse(422, 'missing_password_recovery_token');
-            } elseif (time() > $results['expire'] + env('PASSWORD_RECOVERY_LINK_EXPIRE')) {
+            } elseif (time() > $results['expire'] + env('PASSWORD_RECOVERY_LINK_EXPIRE') * 1000) {
                 return $this->makeResponse(403, 'password_recovery_token_expired');
             } else {
                 $userID = $results['id'];
@@ -204,12 +200,18 @@ class UserAuthController extends AbstractController
         $body = $request->toArray();
 
         try {
+
             $this->model->updateUserInfo($body, $this->userID);
+
+            $return = $this->model->getUserInfo($this->token, [
+                'id' => $this->userID,
+            ]);
+
         } catch (Exception $exception) {
             return $this->makeResponse(500, 'error_updating_user_info');
         }
 
-        return $this->makeResponse(200, 'User Info updated seccessfully');
+        return $return;
     }
 
     /*

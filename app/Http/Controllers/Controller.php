@@ -26,6 +26,7 @@ class Controller extends BaseController
     ];
 
     protected $userID;
+    protected $token;
     protected $construct;
 
     /*
@@ -70,13 +71,14 @@ class Controller extends BaseController
 
             $body = json_decode($response->getContent(), TRUE);
 
-            if (Helpers::getDefault($body['data']['id']) != $body['data']['id']) {
+            if (Helpers::getDefault($body['data']['id']) != $id) {
                 return $this->construct = [
                     'error' => [403 => 'invalid_token'],
                 ];
             }
 
             $this->userID = $id;
+            $this->token = $token;
         }
     }
 
@@ -101,7 +103,7 @@ class Controller extends BaseController
 
         $code = key($error);
 
-        $this->makeResponse($code, $error[$code]);
+        return $this->makeResponse($code, $error[$code]);
     }
 
     /*
