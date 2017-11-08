@@ -15,20 +15,18 @@ use Illuminate\Http\Request;
 
 Route::group(['middleware' => 'Cors'], function() {
 
-    Route::get('auth/users/check-token', 'UserAuthController@checkToken');
-    Route::post('auth/users/register', 'UserAuthController@register');
+    Route::post('auth/users', 'UserAuthController@register');
+    Route::put('auth/users', 'UserAuthController@update');
     Route::post('auth/users/login', 'UserAuthController@login');
-    Route::post('auth/users/password-recovery-by-email', 'UserAuthController@passwordRecoveryByEmail');
-    Route::put('auth/users/password-reset', 'UserAuthController@passwordReset');
-    Route::put('auth/users/update', 'UserAuthController@update');
+    Route::get('auth/users/token', 'UserAuthController@checkToken');
+    Route::patch('auth/users/password', 'UserAuthController@passwordRecoveryByEmail');
+    Route::put('auth/users/password', 'UserAuthController@passwordReset');
 
+    Route::get('auth/questions', 'QuestionsAuthController@fetch');
 
-
-    Route::get('auth/questions/get', 'QuestionsAuthController@fetch');
-
-    Route::get('auth/user-questions/get/{username}', 'UserQuestionsAuthController@fetch');
-    Route::post('auth/user-questions/verify', 'UserQuestionsAuthController@verify');
-    Route::put('auth/user-questions/update', 'UserQuestionsAuthController@update');
+    Route::get('auth/user-questions/{username}', 'UserQuestionsAuthController@fetch');
+    Route::put('auth/user-questions', 'UserQuestionsAuthController@update');
+    Route::patch('auth/user-questions/{username}', 'UserQuestionsAuthController@verify');
 });
 
 Route::group(['middleware' => 'jwt.auth', 'middleware' => 'Cors'], function() {

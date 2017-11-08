@@ -44,13 +44,15 @@ class UserQuestionsAuthController extends AbstractController
     ****************************************************************************
     */
 
-    public function verify(Request $request)
+    public function verify(Request $request, $username)
     {
         if (! empty($this->construct['error'])) {
             return $this->constructErrorResponse();
         }
 
-        $data = $request->toArray();
+        $data = $request->all();
+
+        $data['username'] = $username;
 
         $result = $this->model->verify($data);
 
@@ -86,7 +88,6 @@ class UserQuestionsAuthController extends AbstractController
         $body = $request->toArray();
 
         try {
-
             $this->model->updateUserQuestions($this->userID, $body['questions']);
         } catch (Exception $exception) {
             return $this->makeResponse(500, 'error_updating_recovery_questions');

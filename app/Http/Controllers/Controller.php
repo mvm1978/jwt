@@ -16,13 +16,21 @@ class Controller extends BaseController
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
     private $unauthPaths = [
-        'users/register' => TRUE,
-        'users/login' => TRUE,
-        'users/password-reset' => TRUE,
-        'users/password-recovery-by-email' => TRUE,
-        'questions/get' => TRUE,
-        'user-questions/get' => TRUE,
-        'user-questions/verify' => TRUE,
+        'GET' => [
+            'questions' => TRUE,
+            'user-questions' => TRUE,
+        ],
+        'POST' => [
+            'users/register' => TRUE,
+            'users/login' => TRUE,
+        ],
+        'PUT' => [
+            'users/password' => TRUE, // reset password by question
+        ],
+        'PATCH' => [
+            'users/password' => TRUE, // reset password by email
+            'user-questions' => TRUE, // verify question and update password
+        ]
     ];
 
     protected $userID;
@@ -43,16 +51,18 @@ class Controller extends BaseController
             return;
         }
 
-        if (empty($parsed[3]) || empty($parsed[4])) {
+        $method = $request->method();
+        $resourse = $parsed[3];
+
+        $resourse .= isset($parsed[4]) ? '/' . $parsed[4] : NULL;
+
+        if (empty($parsed[3])) {
             return $this->construct = [
                 'error' => [400 => 'bad_request'],
             ];
         }
 
-        $class = $parsed[3];
-        $method = $parsed[4];
-
-        if (! isset($this->unauthPaths[$class . '/' . $method])) {
+        if (! isset($this->unauthPaths[$method][$resourse])) {
             // some requests may not need prior authorization
             $header = $request->header();
 
