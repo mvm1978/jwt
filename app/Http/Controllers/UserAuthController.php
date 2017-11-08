@@ -229,4 +229,17 @@ class UserAuthController extends AbstractController
     ****************************************************************************
     */
 
+    public function checkToken()
+    {
+        if (! empty($this->construct['error'])) {
+            return $this->constructErrorResponse();
+        }
+
+        return $this->makeResponse(200, 'Token verified');
+    }
+
+    /*
+    ****************************************************************************
+    */
+
 }

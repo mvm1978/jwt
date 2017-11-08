@@ -62,10 +62,16 @@ class Controller extends BaseController
                 ];
             }
 
-            $authenticationModel = new AuthenticationModel();
-
             $token = reset($header['token']);
             $id = reset($header['id']);
+
+            if (! $token || ! $id) {
+                return $this->construct = [
+                    'error' => [401 => 'invalid_token'],
+                ];
+            }
+
+            $authenticationModel = new AuthenticationModel();
 
             $response = $authenticationModel->getAuthUser($token);
 
