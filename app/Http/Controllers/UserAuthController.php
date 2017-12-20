@@ -184,7 +184,7 @@ class UserAuthController extends AbstractController
             return $this->makeResponse(500, 'error_recovering_password');
         }
 
-        return $this->makeResponse(200, 'Password recovery completed');
+        return $this->makeResponse(200, 'password_recovery_completed');
     }
 
     /*

@@ -21,7 +21,7 @@ class Controller extends BaseController
             'user-questions' => TRUE,
         ],
         'POST' => [
-            'users/register' => TRUE,
+            'users' => TRUE,
             'users/login' => TRUE,
         ],
         'PUT' => [
@@ -52,15 +52,14 @@ class Controller extends BaseController
         }
 
         $method = $request->method();
-        $resourse = $parsed[3];
-
-        $resourse .= isset($parsed[4]) ? '/' . $parsed[4] : NULL;
 
         if (empty($parsed[3])) {
             return $this->construct = [
                 'error' => [400 => 'bad_request'],
             ];
         }
+
+        $resourse = $parsed[3];
 
         if (! isset($this->unauthPaths[$method][$resourse])) {
             // some requests may not need prior authorization
