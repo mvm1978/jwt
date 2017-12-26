@@ -105,9 +105,9 @@ class UserAuthModel extends AbstractModel implements AuthenticatableContract
 
             $from = env('MAIL_USERNAME');
 
-            $mail->from($from, 'MVM Sing Up')
+            $mail->from($from, 'Virtual Library Sing Up')
                     ->to($email, $user)
-                    ->subject('Registering to MVM');
+                    ->subject('Registering to Virtual Library');
         });
     }
 
@@ -152,9 +152,9 @@ class UserAuthModel extends AbstractModel implements AuthenticatableContract
 
             $from = env('MAIL_USERNAME');
 
-            $mail->from($from, 'MVM Password Recovery')
+            $mail->from($from, 'Virtual Library Password Recovery')
                     ->to($email, $user)
-                    ->subject('Password Recovert at MVM');
+                    ->subject('Password Recovert at Virtual Library');
         });
     }
 
