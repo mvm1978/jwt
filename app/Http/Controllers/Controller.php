@@ -59,7 +59,7 @@ class Controller extends BaseController
             ];
         }
 
-        $resourse = $parsed[3];
+        $resourse = implode('/', array_slice($parsed, 3, 2));
 
         if (! isset($this->unauthPaths[$method][$resourse])) {
             // some requests may not need prior authorization
