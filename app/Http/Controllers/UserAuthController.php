@@ -8,13 +8,13 @@ use Exception;
 
 use Helpers;
 
-use App\Http\Controllers\AbstractController;
+use App\Http\Controllers\JWTController;
 
 use App\Models\AuthenticationModel;
 use App\Models\UserAuthModel;
 use App\Models\PasswordRecoveryAuthModel;
 
-class UserAuthController extends AbstractController
+class UserAuthController extends JWTController
 {
 
     /*

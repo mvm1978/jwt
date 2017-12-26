@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Exception;
 
-use App\Http\Controllers\AbstractController;
+use App\Http\Controllers\JWTController;
 
 use App\Models\UserQuestionsAuthModel;
 use App\Models\UserAuthModel;
 
-class UserQuestionsAuthController extends AbstractController
+class UserQuestionsAuthController extends JWTController
 {
 
     /*

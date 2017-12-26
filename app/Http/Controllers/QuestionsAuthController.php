@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-use App\Http\Controllers\AbstractController;
+use App\Http\Controllers\JWTController;
 
 use App\Models\QuestionsAuthModel;
 
-class QuestionsAuthController extends AbstractController
+class QuestionsAuthController extends JWTController
 {
 
     /*

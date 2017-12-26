@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-class AbstractController extends Controller
+class JWTController extends Controller
 {
     protected $model = NULL;
 
