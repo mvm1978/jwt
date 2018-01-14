@@ -51,17 +51,18 @@ class Controller extends BaseController
             return;
         }
 
-        $method = $request->method();
-
         if (empty($parsed[3])) {
             return $this->construct = [
                 'error' => [400 => 'bad_request'],
             ];
         }
 
-        $resourse = implode('/', array_slice($parsed, 3, 2));
+        $method = $request->method();
+        $firstResourse = $parsed[3];
+        $fullResourse = implode('/', array_slice($parsed, 3, 2));
 
-        if (! isset($this->unauthPaths[$method][$resourse])) {
+        if (! isset($this->unauthPaths[$method][$fullResourse])
+         && ! isset($this->unauthPaths[$method][$firstResourse])) {
             // some requests may not need prior authorization
             $header = $request->header();
 
